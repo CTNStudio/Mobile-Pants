@@ -131,10 +131,8 @@ public abstract class PoweredPantsItem extends ArmorItem {
 	        );
 	    }
 
-
 		// TODO
-	    // 如果坠落高度大于等于 2，则触发范围攻击逻辑
-	    if (fallDistance >= 2) {
+	    if (fallDistance >= 3) {
 	        if (level instanceof ServerLevel serverLevel) {
 	            double playerX = player.getX();
 	            double playerY = player.getY();
@@ -152,37 +150,26 @@ public abstract class PoweredPantsItem extends ArmorItem {
 	            // 获取范围内可攻击的目标
 	            List<LivingEntity> targetEntities = getAttackableTarget(player, serverLevel, attackAABB);
 
-	            // 对每个目标施加击退和伤害
-	            for (LivingEntity entity : targetEntities) {
-	                // 计算击退方向（玩家指向目标）
-	                double knockbackDirectionX = player.getX() - entity.getX();
-	                double knockbackDirectionZ = player.getZ() - entity.getZ();
+		        // 计算距离相关参数
+		        double maxDistance = fallDistance * 0.8;
 
-	                // 计算距离相关参数
-	                double maxDistance = fallDistance;
-	                double currentDistance = player.position().distanceTo(entity.position());
+		        // 对每个目标施加击退和伤害
+		        for (LivingEntity entity : targetEntities) {
+			        // 计算击退方向（玩家指向目标）
+			        double knockbackDirectionX = player.getX() - entity.getX();
+			        double knockbackDirectionZ = player.getZ() - entity.getZ();
+			        double currentDistance = player.position().distanceTo(entity.position());
 
 	                // 距离百分比（0.0 到 1.0）
 	                double distanceRatio = Math.min(1.0, currentDistance / maxDistance);
 	                double scaledValue = maxDistance / distanceRatio;
 
-	                // 触发击退
-	                entity.knockback(fallDistance / 2, knockbackDirectionX, knockbackDirectionZ);
-
-	                // 添加垂直冲量并缩放
-	                Vec3 updatedDeltaMovement = entity.getDeltaMovement()
-	                    .add(0, fallDistance / 15, 0)
-	                    .scale(scaledValue / 10);
-
-	                // 生成附加粒子效果
-	                for (int i = 0; i < scaledValue; i++) {
-	                    spawnSmashAttackParticles(level, entity.getOnPos(), (int) scaledValue);
-	                }
-
 	                // 造成坠落伤害
 	                entity.hurt(serverLevel.damageSources().playerAttack(player), fallDistance);
 
-	                // 更新实体运动状态
+			        // 触发击退
+			        entity.knockback(fallDistance / 2, knockbackDirectionX, knockbackDirectionZ);
+			        Vec3 updatedDeltaMovement = entity.getDeltaMovement().add(0, fallDistance / 10, 0).scale(scaledValue / 35);
 	                entity.setDeltaMovement(updatedDeltaMovement);
 	            }
 	        }

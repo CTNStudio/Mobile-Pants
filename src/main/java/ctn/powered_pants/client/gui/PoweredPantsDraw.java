@@ -75,9 +75,9 @@ public class PoweredPantsDraw extends LayeredDraw implements LayeredDraw.Layer {
 			}
 			this.render(guiGraphics, progressX, y, progressOffsetX, 7, progressDrawWidth, backgroundHeight);
 			int i = maxJumpLevelTime / 100 * 10;
-			render(
+			renderScale(
 					guiGraphics, x + getDrawWidth(progressWidth, getPercentage(i, maxJumpLevelTime)), y,
-					183, 0, 3, backgroundHeight);
+					183, 0, 3, backgroundHeight, tick, i, maxJumpLevelTime);
 		}
 	}
 
@@ -101,8 +101,8 @@ public class PoweredPantsDraw extends LayeredDraw implements LayeredDraw.Layer {
 
 	private void renderScale(GuiGraphics guiGraphics, int x, int y, int offsetX, int offsetY, int width, int height, int tick, int max, int maxJumpLevelTime) {
 		if (getPercentage(tick, maxJumpLevelTime) >= getPercentage(max, maxJumpLevelTime)) {
-			offsetX += 4;
+			offsetY +=7;
 		}
-		render(guiGraphics, x + 2, y, offsetX, offsetY, width, height);
+		render(guiGraphics, x, y, offsetX, offsetY, width, height);
 	}
 }
