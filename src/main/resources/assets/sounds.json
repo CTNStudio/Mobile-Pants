@@ -1,0 +1,16 @@
+{
+  "prompt": {
+    "sounds": [
+      {
+        "name": "powered_pants:prompt",
+        "type": "sound",
+        "volume": 0.8,
+        "pitch": 1.1,
+        "weight": 3,
+        "stream": false,
+        "attenuation_distance": 8,
+        "preload": false
+      }
+    ]
+  }
+}

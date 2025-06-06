@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "powered_pants:item/leather_powered_pants"
+  }
+}
