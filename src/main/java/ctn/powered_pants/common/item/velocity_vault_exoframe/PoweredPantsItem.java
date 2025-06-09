@@ -2,6 +2,8 @@ package ctn.powered_pants.common.item.velocity_vault_exoframe;
 
 import ctn.powered_pants.api.IModPlayer;
 import ctn.powered_pants.events.InputEvents;
+import ctn.powered_pants.events.TickEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -11,6 +13,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorItem;
@@ -19,14 +22,19 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
+import java.util.Stack;
 
 import static net.minecraft.core.particles.ParticleTypes.POOF;
 import static net.minecraft.util.ParticleUtils.spawnSmashAttackParticles;
 
+@EventBusSubscriber
 public abstract class PoweredPantsItem extends ArmorItem {
 	protected int   maxJumpTime  = 300;
 	protected float maxJumpAngle = 45;
@@ -150,27 +158,9 @@ public abstract class PoweredPantsItem extends ArmorItem {
 	            // 获取范围内可攻击的目标
 	            List<LivingEntity> targetEntities = getAttackableTarget(player, serverLevel, attackAABB);
 
-		        // 计算距离相关参数
-		        double maxDistance = fallDistance * 0.8;
-
 		        // 对每个目标施加击退和伤害
 		        for (LivingEntity entity : targetEntities) {
-			        // 计算击退方向（玩家指向目标）
-			        double knockbackDirectionX = player.getX() - entity.getX();
-			        double knockbackDirectionZ = player.getZ() - entity.getZ();
-			        double currentDistance = player.position().distanceTo(entity.position());
-
-	                // 距离百分比（0.0 到 1.0）
-	                double distanceRatio = Math.min(1.0, currentDistance / maxDistance);
-	                double scaledValue = maxDistance / distanceRatio;
-
-	                // 造成坠落伤害
-	                entity.hurt(serverLevel.damageSources().playerAttack(player), fallDistance);
-
-			        // 触发击退
-			        entity.knockback(fallDistance / 2, knockbackDirectionX, knockbackDirectionZ);
-			        Vec3 updatedDeltaMovement = entity.getDeltaMovement().add(0, fallDistance / 10, 0).scale(scaledValue / 35);
-	                entity.setDeltaMovement(updatedDeltaMovement);
+					ATTACK_STACK.push(new PoweredPantsAttack(player.position(), fallDistance, player, entity));
 	            }
 	        }
 	    }
@@ -185,8 +175,6 @@ public abstract class PoweredPantsItem extends ArmorItem {
 	    }
 	}
 
-
-
 	private static @NotNull List<LivingEntity> getAttackableTarget(LivingEntity entity, ServerLevel serverLevel, AABB aabb) {
 		return serverLevel.getEntitiesOfClass(LivingEntity.class, aabb, (livingEntity) -> !livingEntity.is(entity) && livingEntity.isAlive());
 	}
@@ -197,5 +185,44 @@ public abstract class PoweredPantsItem extends ArmorItem {
 
 	public float getMaxJumpAngle() {
 		return maxJumpAngle;
+	}
+
+	private record PoweredPantsAttack(Vec3 pos, float fallDistance, Player player, LivingEntity entity) {
+		public void run() {
+			final double maxDistance = fallDistance * 0.8;
+			final Level world = player.level();
+			assert world instanceof ServerLevel;
+
+			// 计算击退方向（玩家指向目标）
+			final double knockbackDirectionX = pos.x() - entity.getX();
+			final double knockbackDirectionZ = pos.z() - entity.getZ();
+			final double currentDistance = pos.distanceTo(entity.position());
+
+			// 距离百分比（0.0 到 1.0）
+			final double distanceRatio = Math.min(1.0, currentDistance / maxDistance);
+			final double scaledValue = maxDistance / distanceRatio;
+
+			// 造成坠落伤害
+			entity.hurt(world.damageSources().playerAttack(player), fallDistance);
+
+			// 触发击退
+			entity.knockback(fallDistance / 2.0, knockbackDirectionX, knockbackDirectionZ);
+			Vec3 updatedDeltaMovement = entity.getDeltaMovement().add(0, fallDistance / 10.0, 0).scale(scaledValue / 35);
+			entity.setDeltaMovement(updatedDeltaMovement);
+		}
+	}
+
+	private static final Stack<PoweredPantsAttack> ATTACK_STACK = new Stack<>();
+
+	@SubscribeEvent
+	public static void tickEvent(ServerTickEvent event) {
+		if (ATTACK_STACK.isEmpty()) {
+			return;
+		}
+
+		for(int i = 0; i < 10; i++) {
+			final var attackObj = ATTACK_STACK.pop();
+			attackObj.run();
+		}
 	}
 }
